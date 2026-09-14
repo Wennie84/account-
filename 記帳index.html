@@ -286,7 +286,7 @@
     </div>
 
     <script>
-        // 基本資料定義
+        // 基本分類定義
         const categories = {
             expense: ['餐飲', '交通', '購物', '娛樂', '居住', '醫療', '其他'],
             income: ['薪水', '獎金', '投資', '副業', '其他']
@@ -297,7 +297,6 @@
 
         // 初始化
         window.onload = function() {
-            // 設定預設日期為今天
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('date').value = today;
             document.getElementById('monthFilter').value = today.slice(0, 7);
@@ -306,7 +305,7 @@
             renderApp();
         };
 
-        // 更新分類下拉選單
+        // 更新分類選單
         function updateCategories() {
             const type = document.getElementById('type').value;
             const categorySelect = document.getElementById('category');
@@ -336,7 +335,6 @@
             records.push(record);
             saveData();
             
-            // 重設表單
             document.getElementById('amount').value = '';
             document.getElementById('note').value = '';
             
@@ -357,12 +355,11 @@
             localStorage.setItem('my_accounting_records', JSON.stringify(records));
         }
 
-        // 渲染應用程式（計算與繪製）
+        // 渲染畫面與計算
         function renderApp() {
             const currentMonth = document.getElementById('monthFilter').value;
             const filteredRecords = records.filter(r => r.date.startsWith(currentMonth));
 
-            // 計算統計
             let income = 0;
             let expense = 0;
             const catExpense = {};
@@ -376,19 +373,16 @@
                 }
             });
 
-            // 更新 HTML 文字
             document.getElementById('totalIncome').innerText = `$${income.toLocaleString()}`;
             document.getElementById('totalExpense').innerText = `$${expense.toLocaleString()}`;
             document.getElementById('totalBalance').innerText = `$${(income - expense).toLocaleString()}`;
 
-            // 渲染明細列表
             const listEl = document.getElementById('recordList');
             listEl.innerHTML = '';
 
             if (filteredRecords.length === 0) {
                 listEl.innerHTML = '<p style="text-align: center; color: #999; padding: 10px;">這個月沒有紀錄喔！</p>';
             } else {
-                // 按日期倒序排列
                 filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(r => {
                     const item = document.createElement('div');
                     item.className = 'record-item';
@@ -406,7 +400,6 @@
                 });
             }
 
-            // 更新圓餅圖
             renderChart(catExpense);
         }
 
@@ -444,7 +437,7 @@
             });
         }
 
-        // 匯出資料
+        // 匯出資料 (JSON)
         function exportData() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records));
             const downloadAnchor = document.createElement('a');
@@ -455,7 +448,7 @@
             downloadAnchor.remove();
         }
 
-        // 匯入資料
+        // 匯入資料 (JSON)
         function importData(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -473,7 +466,7 @@
                         alert('檔案格式錯誤！');
                     }
                 } catch (err) {
-                    alert('讀取檔案失敗，請確保上傳正確的 JSON 檔案。');
+                    alert('讀取檔案失敗，請確認選擇了正確的 JSON 檔案。');
                 }
             };
             reader.readAsText(file);
