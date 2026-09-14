@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>藍白簡約記帳本</title>
+    <!-- Chart.js 引入圖表庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-blue: #0066cc;
+            --light-blue: #e6f0fa;
+            --soft-blue: #4d94ff;
+            --bg-color: #f4f7fb;
+            --card-bg: #ffffff;
+            --text-main: #2c3e50;
+            --text-sub: #7f8c8d;
+            --income-color: #27ae60;
+            --expense-color: #e74c3c;
+            --border-radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 20px 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            color: var(--primary-blue);
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.08);
+        }
+
+        /* 統計概覽 */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            text-align: center;
+        }
+
+        .summary-item h3 {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            margin-bottom: 5px;
+        }
+
+        .summary-item p {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .income { color: var(--income-color); }
+        .expense { color: var(--expense-color); }
+        .balance { color: var(--primary-blue); }
+
+        /* 表單 */
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            margin-bottom: 4px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #dcdfe6;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--soft-blue);
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--soft-blue);
+        }
+
+        .btn-secondary {
+            background-color: var(--light-blue);
+            color: var(--primary-blue);
+            margin-top: 8px;
+        }
+
+        /* 明細列表 */
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .record-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .record-item:last-child {
+            border-bottom: none;
+        }
+
+        .record-info div:first-child {
+            font-weight: bold;
+        }
+
+        .record-info div:last-child {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            margin-top: 2px;
+        }
+
+        .record-amount {
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .del-btn {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .del-btn:hover {
+            color: var(--expense-color);
+        }
+
+        /* 圖表 */
+        .chart-container {
+            position: relative;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        /* 備份按鈕區 */
+        .data-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>藍白簡約記帳本</h1>
+    </header>
+
+    <!-- 本月結餘總覽 -->
+    <div class="card">
+        <div class="form-group" style="margin-bottom: 15px;">
+            <input type="month" id="monthFilter" onchange="renderApp()">
+        </div>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <h3>總收入</h3>
+                <p id="totalIncome" class="income">$0</p>
+            </div>
+            <div class="summary-item">
+                <h3>總支出</h3>
+                <p id="totalExpense" class="expense">$0</p>
+            </div>
+            <div class="summary-item">
+                <h3>結餘</h3>
+                <p id="totalBalance" class="balance">$0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增收支表單 -->
+    <div class="card">
+        <form id="recordForm" onsubmit="addRecord(event)">
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label>類型</label>
+                    <select id="type" onchange="updateCategories()">
+                        <option value="expense">支出</option>
+                        <option value="income">收入</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>分類</label>
+                    <select id="category"></select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label>金額</label>
+                    <input type="number" id="amount" placeholder="0" required min="1">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>日期</label>
+                    <input type="date" id="date" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>備註</label>
+                <input type="text" id="note" placeholder="如：午餐、薪水...">
+            </div>
+
+            <button type="submit" class="btn">新增紀錄</button>
+        </form>
+    </div>
+
+    <!-- 支出分類圓餅圖 -->
+    <div class="card">
+        <h3 style="font-size: 1rem; margin-bottom: 15px; text-align: center;">本月支出圖表</h3>
+        <div class="chart-container">
+            <canvas id="expenseChart"></canvas>
+        </div>
+    </div>
+
+    <!-- 帳務明細列表 -->
+    <div class="card">
+        <div class="list-header">
+            <h3>當月明細</h3>
+        </div>
+        <div id="recordList"></div>
+    </div>
+
+    <!-- 資料匯出與備份區 -->
+    <div class="card">
+        <h3 style="font-size: 0.9rem; margin-bottom: 10px;">資料管理 (跨裝置轉移/備份)</h3>
+        <div class="data-actions">
+            <button class="btn btn-secondary" onclick="exportData()">匯出備份 (JSON)</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">匯入資料</button>
+            <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importData(event)">
+        </div>
+    </div>
+
+    <script>
+        // 基本資料定義
+        const categories = {
+            expense: ['餐飲', '交通', '購物', '娛樂', '居住', '醫療', '其他'],
+            income: ['薪水', '獎金', '投資', '副業', '其他']
+        };
+
+        let records = JSON.parse(localStorage.getItem('my_accounting_records')) || [];
+        let myChart = null;
+
+        // 初始化
+        window.onload = function() {
+            // 設定預設日期為今天
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').value = today;
+            document.getElementById('monthFilter').value = today.slice(0, 7);
+
+            updateCategories();
+            renderApp();
+        };
+
+        // 更新分類下拉選單
+        function updateCategories() {
+            const type = document.getElementById('type').value;
+            const categorySelect = document.getElementById('category');
+            categorySelect.innerHTML = '';
+            
+            categories[type].forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.innerText = cat;
+                categorySelect.appendChild(opt);
+            });
+        }
+
+        // 新增紀錄
+        function addRecord(e) {
+            e.preventDefault();
+
+            const record = {
+                id: Date.now(),
+                type: document.getElementById('type').value,
+                category: document.getElementById('category').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                date: document.getElementById('date').value,
+                note: document.getElementById('note').value
+            };
+
+            records.push(record);
+            saveData();
+            
+            // 重設表單
+            document.getElementById('amount').value = '';
+            document.getElementById('note').value = '';
+            
+            renderApp();
+        }
+
+        // 刪除紀錄
+        function deleteRecord(id) {
+            if (confirm('確定要刪除這筆紀錄嗎？')) {
+                records = records.filter(r => r.id !== id);
+                saveData();
+                renderApp();
+            }
+        }
+
+        // 儲存至 localStorage
+        function saveData() {
+            localStorage.setItem('my_accounting_records', JSON.stringify(records));
+        }
+
+        // 渲染應用程式（計算與繪製）
+        function renderApp() {
+            const currentMonth = document.getElementById('monthFilter').value;
+            const filteredRecords = records.filter(r => r.date.startsWith(currentMonth));
+
+            // 計算統計
+            let income = 0;
+            let expense = 0;
+            const catExpense = {};
+
+            filteredRecords.forEach(r => {
+                if (r.type === 'income') {
+                    income += r.amount;
+                } else {
+                    expense += r.amount;
+                    catExpense[r.category] = (catExpense[r.category] || 0) + r.amount;
+                }
+            });
+
+            // 更新 HTML 文字
+            document.getElementById('totalIncome').innerText = `$${income.toLocaleString()}`;
+            document.getElementById('totalExpense').innerText = `$${expense.toLocaleString()}`;
+            document.getElementById('totalBalance').innerText = `$${(income - expense).toLocaleString()}`;
+
+            // 渲染明細列表
+            const listEl = document.getElementById('recordList');
+            listEl.innerHTML = '';
+
+            if (filteredRecords.length === 0) {
+                listEl.innerHTML = '<p style="text-align: center; color: #999; padding: 10px;">這個月沒有紀錄喔！</p>';
+            } else {
+                // 按日期倒序排列
+                filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(r => {
+                    const item = document.createElement('div');
+                    item.className = 'record-item';
+                    item.innerHTML = `
+                        <div class="record-info">
+                            <div>${r.category} ${r.note ? ` - <span style="font-weight:normal; color:#666;">${r.note}</span>` : ''}</div>
+                            <div>${r.date}</div>
+                        </div>
+                        <div class="record-amount">
+                            <span class="${r.type}">${r.type === 'income' ? '+' : '-'}$${r.amount.toLocaleString()}</span>
+                            <button class="del-btn" onclick="deleteRecord(${r.id})">✕</button>
+                        </div>
+                    `;
+                    listEl.appendChild(item);
+                });
+            }
+
+            // 更新圓餅圖
+            renderChart(catExpense);
+        }
+
+        // 繪製圓餅圖
+        function renderChart(catExpense) {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            const labels = Object.keys(catExpense);
+            const data = Object.values(catExpense);
+
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            if (labels.length === 0) {
+                return;
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#4d94ff', '#0066cc', '#80b3ff', '#99c2ff', '#b3d1ff', '#cce0ff', '#e6f0fa'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        // 匯出資料
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `accounting_backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // 匯入資料
+        function importData(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedRecords = JSON.parse(e.target.result);
+                    if (Array.isArray(importedRecords)) {
+                        records = importedRecords;
+                        saveData();
+                        renderApp();
+                        alert('資料匯入成功！');
+                    } else {
+                        alert('檔案格式錯誤！');
+                    }
+                } catch (err) {
+                    alert('讀取檔案失敗，請確保上傳正確的 JSON 檔案。');
+                }
+            };
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
